@@ -38,7 +38,7 @@ class ThetaDFSegNet:
                         'relu5_3', 'conv5_4', 'relu5_4')
 
     def __init__(self, dataset_directory, num_classes=11):
-        self.dataset_directory = dataset_directory
+
         self.num_classes = num_classes
         self.load_vgg_weights()
         self.build()
@@ -334,10 +334,11 @@ class ThetaDFSegNet:
         return global_step
 
     
-    def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
+    def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5,
+              theta, is_trainable, dataset_directory):
         current_step = self.restore_session()
 
-        bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
+        bdr = BatchDatasetReader(dataset_directory, 480, 320, current_step, 
                                  batch_size)
 
         # Begin Training
@@ -350,7 +351,8 @@ class ThetaDFSegNet:
             # is_trainable = True : street view training
             # is_trainable = False : non-street view training, freeze weights
             feed_dict = {self.x: images, self.y: ground_truths, 
-                         self.is_trainable: True, self.theta: 0, self.rate: learning_rate}
+                         self.is_trainable: is_trainable, 
+                         self.theta: theta, self.rate: learning_rate}
             print('run train step: ' + str(i))
             self.train_step.run(session=self.session, feed_dict=feed_dict)
 
@@ -362,17 +364,36 @@ class ThetaDFSegNet:
             # Run against validation dataset for 100 iterations
             if i % 100 == 0:
                 images, ground_truths = bdr.next_val_batch()
+                num_training_images = bdr.num_train
+
 
                 # Make a validation prediction
                 feed_dict = {self.x: images, self.y: ground_truths, 
-                             self.is_trainable: 1, self.theta: 0, self.rate: learning_rate}
+                             self.is_trainable: is_trainable, 
+                             self.theta: theta, self.rate: learning_rate}
                 val_loss = self.session.run(self.loss, feed_dict=feed_dict)
                 val_accuracy = self.session.run(self.accuracy, 
                                                 feed_dict=feed_dict)
                 val_mean_IoU, update_op = self.session.run(self.mean_IoU, 
                                                 feed_dict=feed_dict)
                 
-                self.log()
+                print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
+                                                       val_loss))
+                print("%s ---> Validation_accuracy: %g" % 
+                      (datetime.datetime.now(), val_accuracy))
+
+                self.logger.log("%s ---> Number of epochs: %g\n" % 
+                                        (datetime.datetime.now(), 
+                                         math.floor((i * batch_size)/
+                                                     num_training_images)))
+                self.logger.log("%s ---> Number of iterations: %g\n" % 
+                                 (datetime.datetime.now(), i))
+                self.logger.log("%s ---> Validation_loss: %g\n" % 
+                                 (datetime.datetime.now(), val_loss))
+                self.logger.log("%s ---> Validation_accuracy: %g\n" % 
+                                 (datetime.datetime.now(), val_accuracy))
+                self.logger.log_for_graphing(i, val_loss, val_accuracy, 
+                                             val_mean_IoU)
       
                 # Save the model variables
                 self.saver.save(self.session, 
@@ -381,7 +402,7 @@ class ThetaDFSegNet:
 
             # Print outputs every 1000 iterations
             if i % 1000 == 0:
-                self.test(learning_rate, self.dataset_directory)
+                self.test(learning_rate, dataset_directory)
                 self.logger.graph_training_stats()
 
     def test(self, learning_rate, dataset_directory):
@@ -400,22 +421,3 @@ class ThetaDFSegNet:
 
             dp = DataPostprocessor()
             dp.write_out(i, image, segmentation, ground_truth, current_step)
-
-
-    def log():
-        print("%s ---> Validation_loss: %g" % (datetime.datetime.now(), 
-                                                       val_loss))
-        print("%s ---> Validation_accuracy: %g" % 
-              (datetime.datetime.now(), val_accuracy))
-
-        self.logger.log("%s ---> Number of epochs: %g\n" % 
-                                (datetime.datetime.now(), 
-                                 math.floor((i * batch_size)/bdr.num_train)))
-        self.logger.log("%s ---> Number of iterations: %g\n" % 
-                         (datetime.datetime.now(), i))
-        self.logger.log("%s ---> Validation_loss: %g\n" % 
-                         (datetime.datetime.now(), val_loss))
-        self.logger.log("%s ---> Validation_accuracy: %g\n" % 
-                         (datetime.datetime.now(), val_accuracy))
-        self.logger.log_for_graphing(i, val_loss, val_accuracy, 
-                                     val_mean_IoU)

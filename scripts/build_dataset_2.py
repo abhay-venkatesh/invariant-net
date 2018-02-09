@@ -76,6 +76,8 @@ def convert_image(dir_name, file_name, counter, i):
     seg_write_path = '../datasets/' + DATASET_NAME + '/view' + str(i) + \
               '/ground_truths/seg' + str(counter) + '.png' 
 
+    print("Writing to " + seg_write_path)
+
     cv2.imwrite(seg_write_path, seg*8)
 
     image_write_path = '../datasets/' + DATASET_NAME + '/view' + str(i) + \
@@ -91,8 +93,7 @@ def build():
     if not os.path.exists(output_directory):
         os.makedirs(output_directory) 
 
-    for i in range(2):
-
+    for i in range(1,20):
 
         subsequence_directory = '../datasets/' + DATASET_NAME + '/view' + \
                                  str(i) + '/'
