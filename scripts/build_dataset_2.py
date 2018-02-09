@@ -11,6 +11,7 @@ import numpy as np
 from ast import literal_eval
 from shutil import copyfile
 import os
+import csv
 
 DATASET_NAME = 'Unreal-20View-11class'
 WIDTH = 480
@@ -37,7 +38,7 @@ color2class = json.load(open('../dat/reducedColorsToClasses.json','r'))
 class2num = json.load(open('../dat/reducedClassesToInt.json','r'))
 color_map = {}
 for color in color2class:
-    color_map[literal_eval(color)] = class2num[color2class[color]]                
+    color_map[literal_eval(color)] = class2num[color2class[color]]              
 
 def convert_image(dir_name, file_name, counter, i):
     """ 
@@ -90,7 +91,8 @@ def build():
     if not os.path.exists(output_directory):
         os.makedirs(output_directory) 
 
-    for i in range(20):
+    for i in range(2):
+
 
         subsequence_directory = '../datasets/' + DATASET_NAME + '/view' + \
                                  str(i) + '/'
@@ -102,19 +104,26 @@ def build():
         scene_image_directory = subsequence_directory + '/images/'
         if not os.path.exists(scene_image_directory):
             os.makedirs(scene_image_directory) 
+            
+        with open(subsequence_directory + 'id-round-mappings', 'w', newline='') as csvfile:
+            id_round_mapping_writer = csv.writer(csvfile, delimiter=',')
 
-        source_directory = "../../../../UnrealEngineSource/"
+            source_directory = "../../../../UnrealEngineSource/"
 
-        counter = 0
-        # Walk through the DatasetSource and pick samples
-        for dirName, subdirList, fileList in os.walk(source_directory):
-            print('Found directory: %s' % dirName)
+            counter = 0
+            # Walk through the DatasetSource and pick samples
+            for dirName, subdirList, fileList in os.walk(source_directory):
+                print('Found directory: %s' % dirName)
 
-            for fname in fileList:
-                desired_file_suffix = 'seg' + str(i) + '.png'
-                if desired_file_suffix in fname:
-                    convert_image(dirName, fname, counter, i)
-                    counter += 1
+                for fname in fileList:
+                    desired_file_suffix = 'seg' + str(i) + '.png'
+                    if desired_file_suffix in fname:
+                        round_substring_index = dirName.find("round")
+                        round_number_index = round_substring_index + 5
+
+                        id_round_mapping_writer.writerow([counter, dirName[round_number_index:]])
+                        convert_image(dirName, fname, counter, i)
+                        counter += 1
 
 def main():
     build() 
