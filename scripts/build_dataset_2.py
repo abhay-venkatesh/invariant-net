@@ -2,6 +2,8 @@
 Script that prepares a dataset for training ThetaDFSegNet.
 We will split the dataset into 20 pieces - one piece per view.
 We will call it Unreal-20View-11class.
+
+NOTE: Run this from the scripts folder to make sure all the paths work.
 """
 import json
 import cv2
@@ -11,6 +13,8 @@ from shutil import copyfile
 import os
 
 DATASET_NAME = 'Unreal-20View-11class'
+WIDTH = 480
+HEIGHT = 320
 
 # Match an i
 def match_color(object_mask, target_color, tolerance=3):
@@ -33,44 +37,51 @@ color2class = json.load(open('../dat/reducedColorsToClasses.json','r'))
 class2num = json.load(open('../dat/reducedClassesToInt.json','r'))
 color_map = {}
 for color in color2class:
-    color_map[literal_eval(color)] = class2num[color2class[color]]
+    color_map[literal_eval(color)] = class2num[color2class[color]]                
 
-def convert_image(dirName, fname, counter):
-    ''' 
+def convert_image(dir_name, file_name, counter, i):
+    """ 
         Args:
-            dirName: Name of directory to output to
-            fname: Name of file getting converted
+            dir_name: Name of directory to output to
+            file_name: Name of file getting converted
             counter: Index of the file in the dataset
+            i: View Index
 
         Output:
             Converts colored segmentation to grayscale,
             and writes to the output directory. 
 
-    Writes the converted image to the data folder as well.
-    Output image has pixel values from 0-27, 0 if no class
-    and 1-27 are classes as described in the finalClassesToInt json file. '''
-    convertedPath = os.path.abspath(dirName)
-    filePath = convertedPath + '\\' + fname
-    print(filePath)
+        Writes the converted image to the data folder as well.
+    """
+    converted_dir_name = os.path.abspath(dir_name)
+    file_path = converted_dir_name + '\\' + file_name
+    print(file_path)
 
-    img = cv2.imread(filePath)
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-    [m,n] = img.shape[:2]
-    res = np.zeros((m,n))
-    print("Working on" + filePath)
+    seg_img = cv2.imread(file_path)
+    seg_img = cv2.cvtColor(seg_img,cv2.COLOR_BGR2RGB)
+    seg_img = cv2.resize(seg_img, (WIDTH, HEIGHT), 
+                         interpolation=cv2.INTER_NEAREST)
+    [m,n] = seg_img.shape[:2]
+    seg = np.zeros((m,n))
+
+    print("Working on" + file_path)
 
     for key in color_map:
-        match_region=match_color(img,key)
+        match_region=match_color(seg_img,key)
         if not (match_region is None):
-            res = ((np.multiply(res, ~match_region)) + 
+            seg = ((np.multiply(seg, ~match_region)) + 
                     match_region*color_map[key])
 
-    outfile = '../datasets/' + DATASET_NAME + \
-                        '/ground_truths/seg' + str(counter) + '.png' 
-    cv2.imwrite(outfile,res*8)
-    image_outfile = '../datasets/' + DATASET_NAME + \
-                                    '/images/pic' + str(counter) + '.png'
-    copyfile(filePath.replace('seg','pic'), image_outfile) 
+    seg_write_path = '../datasets/' + DATASET_NAME + '/view' + str(i) + \
+              '/ground_truths/seg' + str(counter) + '.png' 
+
+    cv2.imwrite(seg_write_path, seg*8)
+
+    image_write_path = '../datasets/' + DATASET_NAME + '/view' + str(i) + \
+                    '/images/pic' + str(counter) + '.png'
+    image = cv2.imread(file_path.replace('seg','pic'))
+    image = cv2.resize(image, (WIDTH, HEIGHT), interpolation=cv2.INTER_NEAREST)
+    cv2.imwrite(image_write_path, image)             
 
 def build():
 
@@ -92,7 +103,7 @@ def build():
         if not os.path.exists(scene_image_directory):
             os.makedirs(scene_image_directory) 
 
-        source_directory = "../../../../UnrealEngineSourceResized/batch0/"
+        source_directory = "../../../../UnrealEngineSource/"
 
         counter = 0
         # Walk through the DatasetSource and pick samples
@@ -100,36 +111,13 @@ def build():
             print('Found directory: %s' % dirName)
 
             for fname in fileList:
-                desired_file_suffix = str(i) + '.jpg'
+                desired_file_suffix = 'seg' + str(i) + '.png'
                 if desired_file_suffix in fname:
-                    convert_image(dirName, fname, counter)
+                    convert_image(dirName, fname, counter, i)
                     counter += 1
-
-
-def print_file_walk():
-    source_directory = "../../../../UnrealEngineSource/"
-
-    # Walk through the DatasetSource and pick samples
-    counter = 0
-    non_street_view_count = 0
-    for dirName, subdirList, fileList in os.walk(source_directory):
-        sequence_counter = 0
-        for fname in fileList:
-            # For first 50 scenes, print the whole sequence of scenes
-            if non_street_view_count < 50 and "seg" in fname:
-                print(dirName + '\\' + fname)
-                sequence_counter += 1
-                if sequence_counter == 20:
-                    counter += 20
-                    sequence_counter = 0
-                    non_street_view_count += 1
-            elif fname == 'seg0.png':
-                print(dirName + '\\' + fname)
-                counter += 1
 
 def main():
     build() 
-    # print_file_walk()
 
 if __name__ == "__main__":
     main()
