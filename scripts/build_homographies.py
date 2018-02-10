@@ -104,12 +104,10 @@ view1_ground_truth_directory = view1_path + "ground_truths/"
 hc = HomographyComputer()
 j = 0
 for i in range(homography1_length):
+
     view0_image_path = view0_image_directory + "pic" + str(i) + ".png"
     view1_image_path = view1_image_directory + "pic" + str(i) + ".png"
-    
-    should_write = hc.hamming_homography(view0_image_path, view1_image_path)
     homography1_image_path = homography1_images_path + "pic" + str(j) + ".png"
-    hc.apply_homography(view0_image_path, homography1_image_path, should_write)
 
     view0_ground_truth_path = view0_ground_truth_directory + \
                               "seg" + str(i) + ".png"
@@ -117,9 +115,13 @@ for i in range(homography1_length):
                               "seg" + str(i) + ".png"
     homography1_ground_truth_path = homography1_ground_truths_path + \
                                     "seg" + str(j) + ".png"
-    hc.apply_homography(view0_ground_truth_path, 
-                        homography1_ground_truth_path,
-                        should_write)
+
+    if not os.path.exists(homography1_image_path):
+        should_write = hc.hamming_homography(view0_image_path, view1_image_path)
+        hc.apply_homography(view0_image_path, homography1_image_path, should_write)
+        hc.apply_homography(view0_ground_truth_path, 
+                            homography1_ground_truth_path,
+                            should_write)
 
     if should_write:
         j += 1
