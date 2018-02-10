@@ -422,11 +422,11 @@ class ThetaDFSegNet:
                                 global_step = i)
 
             # Print outputs every 1000 iterations
-            # if i % 1000 == 0:
-            #    self.test(learning_rate, dataset_directory)
-            #    self.logger.graph_training_stats()
+            if i % 1000 == 0:
+                self.test(theta, is_trainable, dataset_directory, 1e-2)
+                self.logger.graph_training_stats()
 
-    def test(self, learning_rate, dataset_directory):
+    def test(self, theta, is_trainable, dataset_directory, learning_rate):
 
         current_step = self.restore_session()
 
@@ -436,8 +436,8 @@ class ThetaDFSegNet:
             image, ground_truth = dr.next_test_pair()
 
             feed_dict = {self.x: [image], self.y: [ground_truth], 
-
-                         self.is_trainable: 1, self.rate: learning_rate}
+            			 self.is_trainable: is_trainable, 
+                         self.theta: theta, self.rate: learning_rate}
             segmentation = np.squeeze(self.session.run(self.prediction, 
                                                        feed_dict=feed_dict))
 

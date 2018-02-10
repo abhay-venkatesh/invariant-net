@@ -1,4 +1,4 @@
-import random
+from random import randint
 import numpy as np
 import cv2
 
@@ -8,50 +8,12 @@ class DatasetReader:
 
   def __init__(self, WIDTH, HEIGHT, dataset_directory):
     self.dataset_directory = dataset_directory
-    training_data_file = dataset_directory + 'train.txt'
-    validation_data_file = dataset_directory + 'val.txt'
     test_data_file = dataset_directory + 'test.txt'
-    self.training_data = open(training_data_file).readlines()
-    self.validation_data = open(validation_data_file).readlines()
     self.test_data = open(test_data_file).readlines()
     self.test_data_size = len(self.test_data)
     self.test_index = 0
     self.WIDTH = WIDTH
     self.HEIGHT = HEIGHT
-
-  def next_train_pair(self):
-    # Load image
-    image_directory = self.dataset_directory + 'images/'
-    image_file = random.choice(self.training_data).rstrip()
-    image = cv2.imread(image_directory + image_file)
-    image = cv2.resize(image, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
-    image = np.float32(image)
-
-    # Load ground truth
-    ground_truth_directory = self.dataset_directory + 'ground_truths/'
-    ground_truth_file = image_file.replace('pic', 'seg')
-    ground_truth = cv2.imread(ground_truth_directory + ground_truth_file, cv2.IMREAD_GRAYSCALE)
-    ground_truth= cv2.resize(ground_truth, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
-    ground_truth = ground_truth/8
-
-    return image, ground_truth
-
-  def next_val_pair(self):
-    # Load image
-    image_directory = self.dataset_directory + 'images/'
-    image_file = random.choice(self.validation_data).rstrip()
-    image = cv2.imread(image_directory + image_file)
-    image = cv2.resize(image, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
-    image = np.float32(image)
-
-    # Load ground truth
-    ground_truth_directory = self.dataset_directory + 'ground_truths/'
-    ground_truth_file = image_file.replace('pic', 'seg')
-    ground_truth = cv2.imread(ground_truth_directory + ground_truth_file, cv2.IMREAD_GRAYSCALE)
-    ground_truth= cv2.resize(ground_truth, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
-    ground_truth = ground_truth/8
-
-    return image, ground_truth
 
   def next_test_pair(self):
     # Load image
@@ -61,6 +23,9 @@ class DatasetReader:
     image = cv2.imread(image_directory + image_file)
     image = cv2.resize(image, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
     image = np.float32(image)
+    random_number = randint(0,1)
+    if random_number == 1:
+        image = np.fliplr(image)
 
     # Load ground truth
     ground_truth_directory = self.dataset_directory + 'ground_truths/'
@@ -68,6 +33,8 @@ class DatasetReader:
     ground_truth = cv2.imread(ground_truth_directory + ground_truth_file, cv2.IMREAD_GRAYSCALE)
     ground_truth= cv2.resize(ground_truth, (self.WIDTH, self.HEIGHT), interpolation=cv2.INTER_NEAREST)
     ground_truth = ground_truth/8
+    if random_number == 1:
+        ground_truth = np.fliplr(ground_truth)
 
     return image, ground_truth
 
