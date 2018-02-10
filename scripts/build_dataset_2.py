@@ -93,7 +93,7 @@ def build():
     if not os.path.exists(output_directory):
         os.makedirs(output_directory) 
 
-    for i in range(1,20):
+    for i in range(0,1):
 
         subsequence_directory = '../datasets/' + DATASET_NAME + '/view' + \
                                  str(i) + '/'
@@ -123,7 +123,10 @@ def build():
                         round_number_index = round_substring_index + 5
 
                         id_round_mapping_writer.writerow([counter, dirName[round_number_index:]])
-                        convert_image(dirName, fname, counter, i)
+                        image_write_path = '../datasets/' + DATASET_NAME + '/view' + str(i) + \
+                                           '/images/pic' + str(counter) + '.png'
+                        if not os.path.exists(image_write_path):
+                            convert_image(dirName, fname, counter, i)
                         counter += 1
 
 def main():

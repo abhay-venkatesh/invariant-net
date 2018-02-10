@@ -21,22 +21,6 @@ if os.name != 'nt':
 
 
 class ThetaDFSegNet:
-    def load_vgg_weights(self):
-        """ Use the VGG model trained on
-            imagent dataset as a starting point for training """
-        vgg_path = "models/imagenet-vgg-verydeep-19.mat"
-        vgg_mat = scipy.io.loadmat(vgg_path)
-
-        self.vgg_params = np.squeeze(vgg_mat['layers'])
-        self.layers = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
-                        'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
-                        'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
-                        'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
-                        'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3',
-                        'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
-                        'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
-                        'relu5_3', 'conv5_4', 'relu5_4')
-
     def __init__(self, dataset_directory, num_classes=11):
 
         self.num_classes = num_classes
@@ -56,6 +40,23 @@ class ThetaDFSegNet:
 
         self.logger = Logger()
 
+    def load_vgg_weights(self):
+        """ Use the VGG model trained on
+            imagent dataset as a starting point for training """
+        vgg_path = "models/imagenet-vgg-verydeep-19.mat"
+        vgg_mat = scipy.io.loadmat(vgg_path)
+
+        self.vgg_params = np.squeeze(vgg_mat['layers'])
+        self.layers = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
+                        'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
+                        'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
+                        'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
+                        'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3',
+                        'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
+                        'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
+                        'relu5_3', 'conv5_4', 'relu5_4')
+
+
     def vgg_weight_and_bias(self, name, W_shape, b_shape, is_trainable):
         """ 
             Initializes weights and biases to the pre-trained VGG model.
@@ -70,24 +71,33 @@ class ThetaDFSegNet:
                 b_var: Initialized bias variable
         """
         if name not in self.layers:
-            return self.weight_variable(W_shape), self.weight_variable(b_shape)
+            return self.weight_variable(W_shape, is_trainable), \
+                   self.weight_variable(b_shape, is_trainable)
         else:
             w, b = self.vgg_params[self.layers.index(name)][0][0][0][0]
             init_w = tf.constant(value=np.transpose(w, (1, 0, 2, 3)), 
                                  dtype=tf.float32, shape=W_shape)
             init_b = tf.constant(value=b.reshape(-1), dtype=tf.float32, 
                                  shape=b_shape)
-            w_var = tf.Variable(init_w, trainable=is_trainable)
-            b_var = tf.Variable(init_b, trainable=is_trainable)
+            w_var = tf.cond(self.is_trainable, 
+                             lambda: tf.Variable(init_w, trainable=True), 
+                             lambda: tf.Variable(init_w, trainable=False))
+            b_var = tf.cond(self.is_trainable, 
+                             lambda: tf.Variable(init_b, trainable=True), 
+                             lambda: tf.Variable(init_b, trainable=False))
             return w_var, b_var 
 
     def weight_variable(self, shape, is_trainable):
         initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.Variable(initial, trainable=is_trainable)
+        return tf.cond(self.is_trainable, 
+                             lambda: tf.Variable(initial, trainable=True), 
+                             lambda: tf.Variable(initial, trainable=False))
 
     def bias_variable(self, shape, is_trainable):
         initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial, trainable=is_trainable)
+        return tf.cond(self.is_trainable, 
+                             lambda: tf.Variable(initial, trainable=True), 
+                             lambda: tf.Variable(initial, trainable=False))
 
 
     def pool_layer(self, x):
@@ -140,22 +150,33 @@ class ThetaDFSegNet:
         convolved_output = tf.nn.conv2d(x, W, strides=[1,1,1,1], 
                                         padding=padding) + b
         batch_norm = tf.contrib.layers.batch_norm(convolved_output, 
-                                                  is_training=is_trainable)
+                                                  is_training=True)
         return tf.nn.relu(batch_norm)
+    
+    def dynamic_filtering(self, pool_5):
+        df = self.gen_dynamic_filter(self.theta, pool_5, 
+                                             filter_shape=[3, 3, 512, 512])
+        pool_5 = self.dynamic_conv_layer(pool_5, 
+                                         filter_shape=[3, 3, 512, 512], 
+                                         dynamic_filter=df, name="conv_d")
+        return pool_5
+
 
     def gen_dynamic_filter(self, theta, pooled_layer, filter_shape):
         """ 
             filter_shape=[3, 3, 512, 512]
 
             tf.reduce_mean(pool_5, axis=3)
-            pool_5 shape = NUM_BATCHES * WIDTH * HEIGHT * 512
-            feature_map shape = NUM_BATCHES * WIDTH * HEIGHT
+            pool_5 shape = NUM_BATCHES * HEIGHT * WIDTH * 512
+            pool_5 shape = NUM_BATCHES(?) * 10 * 15 * 512
+            feature_map shape = NUM_BATCHES * HEIGHT * WIDTH
         """
         feature_map = tf.reduce_mean(pooled_layer, axis=3)
-        # length = WIDTH * HEIGHT
+        # length = HEIGHT * WIDTH
         length = feature_map.get_shape()[1] * feature_map.get_shape()[2]
         features = tf.reshape(feature_map, [-1, int(length)])
-        features = tf.concat(theta, features)
+    
+        features = tf.concat([theta, features], 0)
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
         fc3 = tf.contrib.layers.fully_connected(fc2, 
@@ -170,10 +191,11 @@ class ThetaDFSegNet:
 
     def dynamic_conv_layer(self, bottom, filter_shape, dynamic_filter, name, 
                            strides=[1,1,1,1], padding="SAME"):
-        init_w = tf.truncated_normal(filter_shape, stddev=0.2)
+        # init_w = tf.truncated_normal(filter_shape, stddev=0.2)
         init_b = tf.constant_initializer(value=0.0, dtype=tf.float32)
         filt = tf.get_variable(name="%s_w"%name,
-                               initializer=init_w,
+                               shape=filter_shape,
+                               initializer=tf.truncated_normal_initializer,
                                dtype=tf.float32)
         filt = tf.add(filt, dynamic_filter)
         conv = tf.nn.conv2d(bottom,filter=filt,strides=strides,padding=padding,
@@ -193,13 +215,12 @@ class ThetaDFSegNet:
             expected = tf.expand_dims(self.y, -1)
             self.is_trainable = tf.placeholder(tf.bool, name='is_trainable')
             self.rate = tf.placeholder(tf.float32, shape=[])
-            self.theta = tf.placeholder(tf.int64, name='theta')
+            self.theta = tf.placeholder(tf.float32, name='theta')
 
             # First encoder
             # conv_1_1 shape = BATCH_SIZE * HEIGHT * WIDTH * 64
             conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 
                                                self.is_trainable, 'conv1_1')
-            conv_1_1_shape = tf.shape(conv_1_1)
             conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 
                                                self.is_trainable, 'conv1_2')
             pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
@@ -240,9 +261,10 @@ class ThetaDFSegNet:
             pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
             # Dynamic Filtering when on non-street view
-            pool_5 = tf.cond(!self.is_trainable, 
-                             lambda: self.dynamic_filter(pool_5), 
-                             lambda: lambda pool_5: pool_5)
+            y = lambda x: x
+            pool_5 = tf.cond(self.is_trainable, 
+                             lambda: y(pool_5), 
+                             lambda: self.dynamic_filtering(pool_5))
 
             # First decoder
             unpool_5 = self.unpool(pool_5, pool_5_argmax)
@@ -289,14 +311,14 @@ class ThetaDFSegNet:
             # score_1 dimensions: BATCH_SIZE * HEIGHT * WIDTH * NUM_CLASSES
             score_1 = self.conv_layer_with_bn(deconv_1_1, 
                                               [1, 1, 32, self.num_classes], 
-                                              'score_1')
+                                              self.is_trainable, 'score_1')
             logits = tf.reshape(score_1, (-1, self.num_classes))
 
             # Prepare network outputs
             cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                labels=tf.reshape(expected, [-1]), 
-                logits=logits, 
-                name='x_entropy')
+                                labels=tf.reshape(expected, [-1]), 
+                                logits=logits, 
+                                name='x_entropy')
             self.loss = tf.reduce_mean(cross_entropy, name='x_entropy_mean')
             optimizer = tf.train.AdamOptimizer(self.rate)
             self.train_step = optimizer.minimize(self.loss)
@@ -310,13 +332,6 @@ class ThetaDFSegNet:
                                                         self.y,
                                                         self.num_classes, 
                                                         name='mean_IoU')
-
-    def dynamic_filtering(self, encoded_features):
-        df = self.gen_dynamic_filter(self.theta, pool_5, 
-                                             filter_shape=[3, 3, 512, 512])
-        pool_5 = self.dynamic_conv_layer(pool_5, 
-                                         filter_shape=[3, 3, 512, 512], 
-                                         dynamic_filter=df, name="conv_d")
 
     def restore_session(self):
         global_step = 0

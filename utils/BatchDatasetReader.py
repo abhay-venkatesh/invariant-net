@@ -12,7 +12,7 @@ class BatchDatasetReader:
         and all things related to data 
     """
 
-    def __init__(self, directory, WIDTH, HEIGHT, current_step, batch_size
+    def __init__(self, directory, WIDTH, HEIGHT, current_step, batch_size,
                  resize=False):
 
         # Save variables
