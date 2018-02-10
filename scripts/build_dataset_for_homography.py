@@ -93,7 +93,7 @@ def build():
     if not os.path.exists(output_directory):
         os.makedirs(output_directory) 
 
-    for i in range(0,1):
+    for i in range(1,2):
 
         subsequence_directory = '../datasets/' + DATASET_NAME + '/homography_view' + \
                                  str(i) + '/'

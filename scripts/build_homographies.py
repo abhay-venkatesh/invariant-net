@@ -66,9 +66,6 @@ class HomographyComputer:
             return True
             
         except:
-            print(A_path)
-            print(B_path)
-            self.H = np.identity(3)
             return False
 
     def apply_homography(self, A_path, out_path, should_write=True):
@@ -80,8 +77,8 @@ class HomographyComputer:
         else:
             pass
 
-view0_path = './datasets/Unreal-20View-11class/view0/'
-view1_path = './datasets/Unreal-20View-11class/view1/'
+view0_path = './datasets/Unreal-20View-11class/homography_view0/'
+view1_path = './datasets/Unreal-20View-11class/homography_view1/'
 
 homography1_path = './datasets/Unreal-20View-11class/homography1/'
 homography1_images_path = homography1_path + "images/"
@@ -116,6 +113,7 @@ for i in range(homography1_length):
     homography1_ground_truth_path = homography1_ground_truths_path + \
                                     "seg" + str(j) + ".png"
 
+    print("Working on " + homography1_image_path)
     if not os.path.exists(homography1_image_path):
         should_write = hc.hamming_homography(view0_image_path, view1_image_path)
         hc.apply_homography(view0_image_path, homography1_image_path, should_write)
@@ -123,5 +121,7 @@ for i in range(homography1_length):
                             homography1_ground_truth_path,
                             should_write)
 
-    if should_write:
+        if should_write:
+            j += 1
+    else:
         j += 1
