@@ -93,7 +93,7 @@ def build():
     if not os.path.exists(output_directory):
         os.makedirs(output_directory) 
 
-    for i in range(1,2):
+    for i in range(3,20):
 
         subsequence_directory = '../datasets/' + DATASET_NAME + '/view' + \
                                  str(i) + '/'

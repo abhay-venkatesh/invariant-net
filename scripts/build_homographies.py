@@ -77,10 +77,12 @@ class HomographyComputer:
         else:
             pass
 
-view0_path = './datasets/Unreal-20View-11class/homography_view0/'
-view1_path = './datasets/Unreal-20View-11class/homography_view1/'
+# PARAMETER: Change the two view folder locations
+view0_path = './datasets/Unreal-20View-11class/view3/'
+view1_path = './datasets/Unreal-20View-11class/view4/'
 
-homography1_path = './datasets/Unreal-20View-11class/homography1/'
+# PARAMETER: Change the homography1_path to the desired output folder
+homography1_path = './datasets/Unreal-20View-11class/homography4/'
 homography1_images_path = homography1_path + "images/"
 homography1_ground_truths_path = homography1_path + "ground_truths/"
 if not os.path.exists(homography1_path):
