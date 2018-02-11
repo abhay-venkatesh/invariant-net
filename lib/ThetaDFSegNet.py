@@ -181,27 +181,20 @@ class ThetaDFSegNet:
         features = tf.reshape(feature_map, [-1, int(length)])
         # print(features.get_shape())
         # features shape = NUM_BATCHES(?) * 150
+        num_batches = tf.shape(features)[0]
 
-        expanded_features = tf.expand_dims(features, 1)
-        # print(expanded_features.get_shape())
-        # expanded_features shape = NUM_BATCHES(?) * 1 * 150
-
-        theta = theta/20
-        # Normalize theta into [0,1] range by diving by total number of theta
-
-        # expanded_theta = tf.expand_dims(theta, 1)
-        # print(expanded_theta.get_shape())
-        # expanded_theta shape = (1,1) 
-
-        num_batches = tf.shape(expanded_features)[0]
        
-        theta_tiled = tf.tile(theta, tf.stack([1, num_batches, 1]))
-        # print(theta_tiled.get_shape())
-        # theta_tiled shape = (5,1) or (NUM_BATCHES, 1)
-
-        concatenated_features = tf.concat([theta_tiled, expanded_features], 1)
-        # print(concatenated_features.get_shape())
-        # features shape = (5, 151) or (NUM_BATCHES, HEIGHT * WIDTH)
+        theta = theta/20
+        theta = tf.expand_dims(theta, 0)
+        theta = tf.expand_dims(theta, 1)
+        # theta = tf.tile(theta, tf.stack([tf.shape(features)[0], 1]))
+        theta = tf.expand_dims(theta, 2)
+        features = tf.expand_dims(features, 2)
+        theta = tf.tile(theta, tf.stack([tf.shape(features)[0], features.get_shape()[1], 1]))
+        features = tf.concat([features, theta], 2)
+        features = tf.reduce_mean(features, axis=2)
+        # features = tf.concat([features, theta], 1)
+        print(features.get_shape())
 
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
@@ -241,7 +234,7 @@ class ThetaDFSegNet:
             expected = tf.expand_dims(self.y, -1)
             self.is_trainable = tf.placeholder(tf.bool, name='is_trainable')
             self.rate = tf.placeholder(tf.float32, shape=[])
-            self.theta = tf.placeholder(tf.float32, name='theta')
+            self.theta = tf.placeholder(tf.float32, shape=[], name='theta')
 
             # First encoder
             # conv_1_1 shape = BATCH_SIZE * HEIGHT * WIDTH * 64
