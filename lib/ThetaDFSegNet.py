@@ -165,18 +165,44 @@ class ThetaDFSegNet:
     def gen_dynamic_filter(self, theta, pooled_layer, filter_shape):
         """ 
             filter_shape=[3, 3, 512, 512]
-
-            tf.reduce_mean(pool_5, axis=3)
-            pool_5 shape = NUM_BATCHES * HEIGHT * WIDTH * 512
-            pool_5 shape = NUM_BATCHES(?) * 10 * 15 * 512
-            feature_map shape = NUM_BATCHES * HEIGHT * WIDTH
+            pooled_layer shape = NUM_BATCHES * HEIGHT * WIDTH * 512
         """
+        # print(pooled_layer.get_shape())
+        # pooled_layer shape = NUM_BATCHES(?) * 10 * 15 * 512
+        
         feature_map = tf.reduce_mean(pooled_layer, axis=3)
-        # length = HEIGHT * WIDTH
+        # print(feature_map.get_shape())
+        # feature_map shape = NUM_BATCHES(?) * HEIGHT * WIDTH
+
         length = feature_map.get_shape()[1] * feature_map.get_shape()[2]
+        # print(length)
+        # length = HEIGHT * WIDTH = 150
+
         features = tf.reshape(feature_map, [-1, int(length)])
-    
-        features = tf.concat([theta, features], 0)
+        # print(features.get_shape())
+        # features shape = NUM_BATCHES(?) * 150
+
+        expanded_features = tf.expand_dims(features, 1)
+        # print(expanded_features.get_shape())
+        # expanded_features shape = NUM_BATCHES(?) * 1 * 150
+
+        theta = theta/20
+        # Normalize theta into [0,1] range by diving by total number of theta
+
+        # expanded_theta = tf.expand_dims(theta, 1)
+        # print(expanded_theta.get_shape())
+        # expanded_theta shape = (1,1) 
+
+        num_batches = tf.shape(expanded_features)[0]
+       
+        theta_tiled = tf.tile(theta, tf.stack([1, num_batches, 1]))
+        # print(theta_tiled.get_shape())
+        # theta_tiled shape = (5,1) or (NUM_BATCHES, 1)
+
+        concatenated_features = tf.concat([theta_tiled, expanded_features], 1)
+        # print(concatenated_features.get_shape())
+        # features shape = (5, 151) or (NUM_BATCHES, HEIGHT * WIDTH)
+
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
         fc3 = tf.contrib.layers.fully_connected(fc2, 
