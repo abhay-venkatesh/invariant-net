@@ -17,10 +17,10 @@ import math
 
 # Only use a single GPU when not testing
 if os.name != 'nt': 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 
-class ThetaDFSegNet:
+class UnfixedThetaSegNet:
     def __init__(self, dataset_directory, num_classes=11):
 
         self.num_classes = num_classes
@@ -289,11 +289,8 @@ class ThetaDFSegNet:
             # pool_5 shape = BATCH_SIZE * HEIGHT * WIDTH * 512
             pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
-            # Dynamic Filtering when on non-street view
-            y = lambda x: x
-            pool_5 = tf.cond(self.is_trainable, 
-                             lambda: y(pool_5), 
-                             lambda: self.dynamic_filtering(pool_5))
+            # Hypernetwork
+            pool_5 = self.dynamic_filtering(pool_5)
 
             # First decoder
             unpool_5 = self.unpool(pool_5, pool_5_argmax)

@@ -17,7 +17,7 @@ class DataPostprocessor:
     seg_color = np.zeros((HEIGHT,WIDTH,3),dtype=np.int32)
     for i in range(HEIGHT):
       for j in range(WIDTH):
-        if image[i][j]==0:
+        if int(image[i][j])==0:
           seg_color[i][j] = [0,0,0]
         else:
           key = str(int(image[i][j]))
