@@ -194,7 +194,7 @@ class ThetaDFSegNet:
         features = tf.concat([features, theta], 2)
         features = tf.reduce_mean(features, axis=2)
         # features = tf.concat([features, theta], 1)
-        print(features.get_shape())
+        # print(features.get_shape())
 
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
