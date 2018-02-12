@@ -290,7 +290,7 @@ class UnfixedThetaSegNet:
             pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
             # Hypernetwork
-            pool_5 = self.dynamic_filtering(pool_5))
+            pool_5 = self.dynamic_filtering(pool_5)
 
             # First decoder
             unpool_5 = self.unpool(pool_5, pool_5_argmax)
