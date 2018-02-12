@@ -183,17 +183,27 @@ class ThetaDFSegNet:
         # features shape = NUM_BATCHES(?) * 150
         num_batches = tf.shape(features)[0]
 
-       
+        """
+        Theta with Reduce Mean
+
         theta = theta/20
         theta = tf.expand_dims(theta, 0)
         theta = tf.expand_dims(theta, 1)
-        # theta = tf.tile(theta, tf.stack([tf.shape(features)[0], 1]))
         theta = tf.expand_dims(theta, 2)
         features = tf.expand_dims(features, 2)
         theta = tf.tile(theta, tf.stack([tf.shape(features)[0], features.get_shape()[1], 1]))
         features = tf.concat([features, theta], 2)
         features = tf.reduce_mean(features, axis=2)
-        # features = tf.concat([features, theta], 1)
+        """ 
+
+        """
+        Theta with append
+        """
+        theta = theta/20
+        theta = tf.expand_dims(theta, 0)
+        theta = tf.expand_dims(theta, 1)
+        theta = tf.tile(theta, tf.stack([tf.shape(features)[0], 1]))
+        features = tf.concat([features, theta], 1)
         # print(features.get_shape())
 
         fc1 = tf.contrib.layers.fully_connected(features, 64)
