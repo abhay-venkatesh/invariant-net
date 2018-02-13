@@ -20,7 +20,7 @@ if os.name != 'nt':
     os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 
-class ThetaDFSegNet:
+class TrainAllDFNet:
     def __init__(self, dataset_directory, num_classes=11):
 
         self.num_classes = num_classes
