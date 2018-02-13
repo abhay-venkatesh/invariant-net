@@ -77,56 +77,57 @@ class HomographyComputer:
         else:
             pass
 
-# PARAMETER: Change the two view folder locations
-view0_path = './datasets/Unreal-20View-11class/view0/'
-view1_path = './datasets/Unreal-20View-11class/view1/'
+for k in range(1,5):
+    # PARAMETER: Change the two view folder locations
+    view0_path = './datasets/Unreal-20View-11class/view' + str(k) + '/'
+    view1_path = './datasets/Unreal-20View-11class/view' + str(k+1) + '/'
 
-# PARAMETER: Change the homography1_path to the desired output folder
-homography1_path = './datasets/Unreal-20View-11class/homography1/'
-homography1_images_path = homography1_path + "images/"
-homography1_ground_truths_path = homography1_path + "ground_truths/"
-if not os.path.exists(homography1_path):
-    os.makedirs(homography1_path)
-if not os.path.exists(homography1_images_path):
-    os.makedirs(homography1_images_path)
-if not os.path.exists(homography1_ground_truths_path):
-    os.makedirs(homography1_ground_truths_path)
+    # PARAMETER: Change the homography1_path to the desired output folder
+    homography1_path = './datasets/Unreal-20View-11class/homography' + str(k+1) + '/'
+    homography1_images_path = homography1_path + "images/"
+    homography1_ground_truths_path = homography1_path + "ground_truths/"
+    if not os.path.exists(homography1_path):
+        os.makedirs(homography1_path)
+    if not os.path.exists(homography1_images_path):
+        os.makedirs(homography1_images_path)
+    if not os.path.exists(homography1_ground_truths_path):
+        os.makedirs(homography1_ground_truths_path)
 
-view0_image_directory = view0_path + "images/"
-view1_image_directory = view1_path + "images/"
-homography1_length = min(len(next(os.walk(view0_image_directory))[2]),
-                         len(next(os.walk(view1_image_directory))[2]))
+    view0_image_directory = view0_path + "images/"
+    view1_image_directory = view1_path + "images/"
+    homography1_length = min(len(next(os.walk(view0_image_directory))[2]),
+                             len(next(os.walk(view1_image_directory))[2]))
 
-view0_ground_truth_directory = view0_path + "ground_truths/"
-view1_ground_truth_directory = view1_path + "ground_truths/"
+    view0_ground_truth_directory = view0_path + "ground_truths/"
+    view1_ground_truth_directory = view1_path + "ground_truths/"
 
-hc = HomographyComputer()
-j = 0
-for i in range(homography1_length):
+    hc = HomographyComputer()
+    j = 0
+    for i in range(homography1_length):
 
-    view0_image_path = view0_image_directory + "pic" + str(i) + ".png"
-    view1_image_path = view1_image_directory + "pic" + str(i) + ".png"
-    homography1_image_path = homography1_images_path + "pic" + str(j) + ".png"
+        view0_image_path = view0_image_directory + "pic" + str(i) + ".png"
+        view1_image_path = view1_image_directory + "pic" + str(i) + ".png"
+        homography1_image_path = homography1_images_path + "pic" + str(j) + ".png"
 
-    view0_ground_truth_path = view0_ground_truth_directory + \
-                              "seg" + str(i) + ".png"
-    view1_ground_truth_path = view1_ground_truth_directory + \
-                              "seg" + str(i) + ".png"
-    homography1_ground_truth_path = homography1_ground_truths_path + \
-                                    "seg" + str(j) + ".png"
+        view0_ground_truth_path = view0_ground_truth_directory + \
+                                  "seg" + str(i) + ".png"
+        view1_ground_truth_path = view1_ground_truth_directory + \
+                                  "seg" + str(i) + ".png"
+        homography1_ground_truth_path = homography1_ground_truths_path + \
+                                        "seg" + str(j) + ".png"
 
-    print("Working on " + homography1_image_path)
-    if not os.path.exists(homography1_image_path):
-        should_write = hc.hamming_homography(view0_image_path, view1_image_path)
-        hc.apply_homography(view0_ground_truth_path, 
-                            homography1_ground_truth_path,
-                            should_write)
+        print("Working on " + homography1_image_path)
+        if not os.path.exists(homography1_image_path):
+            should_write = hc.hamming_homography(view0_image_path, view1_image_path)
+            hc.apply_homography(view0_ground_truth_path, 
+                                homography1_ground_truth_path,
+                                should_write)
 
-        if should_write:
+            if should_write:
+                j += 1
+                view1_image = cv2.imread(view1_image_path)
+                cv2.imwrite(homography1_image_path, view1_image)
+
+
+        else:
             j += 1
-            view1_image = cv2.imread(view1_image_path)
-            cv2.imwrite(homography1_image_path, view1_image)
-
-
-    else:
-        j += 1
