@@ -487,7 +487,7 @@ class Scylla:
                                 global_step = i)
 
             # Print outputs every 1000 iterations
-            if i % 1000 == 0:
+            if i % 10000 == 0:
                 self.test(theta, is_trainable, dataset_directory, 1e-2)
                 self.logger.graph_training_stats()
 
