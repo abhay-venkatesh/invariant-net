@@ -231,14 +231,23 @@ class Scylla:
                                    name=name)
         bias = tf.get_variable(name="%s_b"%name,initializer=init_b,
                                shape=[filter_shape[-1]],dtype=tf.float32)
-        return tf.nn.bias_add(conv, bias)
+
+        convolved_output = tf.nn.bias_add(conv, bias)
+        batch_norm = tf.contrib.layers.batch_norm(convolved_output, 
+                                                  is_training=True)
+        return tf.nn.relu(batch_norm)
 
     def hyper_conv_with_bn(self, x, W_shape, name, padding='SAME'):
         b_shape = W_shape[3]
-        init_W = tf.truncated_normal(shape, stddev=0.1) 
-        init_b = tf.constant(0.1, shape=shape)
-        w = tf.Variable(init_W)
-        b = tf.Variable(init_b)
+        init_b =  tf.constant_initializer(value=0.0, dtype=tf.float32)
+        W = tf.get_variable(name="%s_w"%name,
+                            shape=W_shape,
+                            initializer=tf.truncated_normal_initializer,
+                            dtype=tf.float32)
+        b = tf.get_variable(name="%s_b"%name,
+                            initializer=init_b,
+                            shape=[b_shape],
+                            dtype=tf.float32)
         convolved_output = tf.nn.conv2d(x, W, strides=[1,1,1,1], 
                                         padding=padding) + b
         batch_norm = tf.contrib.layers.batch_norm(convolved_output, 
@@ -247,21 +256,13 @@ class Scylla:
 
     def hyper_encoder(self, pool_5):
         C = pool_5.get_shape()[3].value
-        h_conv_1 = self.hyper_conv_with_bn(pool_5, [3,3,C,2*C], 
-                                               self.is_trainable, 'h_conv_1')
-        h_conv_2 = self.hyper_conv_with_bn(h_conv_1, [3,3,C,4*C], 
-                                           self.is_trainable, 'h_conv_2')
-        h_conv_3 = self.hyper_conv_with_bn(h_conv_2, [3,3,C,8*C], 
-                                           self.is_trainable, 'h_conv_3')
-        pool, pool_argmax = self.pool_layer(h_conv_3)
+        h_conv_1 = self.hyper_conv_with_bn(pool_5, [3,3,C,2*C], 'h_conv_1')
+        h_conv_2 = self.hyper_conv_with_bn(h_conv_1, [3,3,2*C,2*C], 'h_conv_2')
+        pool, pool_argmax = self.pool_layer(h_conv_2)
 
         unpool_1 = self.unpool(pool, pool_argmax)
-        h_deconv_3 = self.hyper_conv_with_bn(unpool_1, [3,3,C,8*C], 
-                                             self.is_trainable, 'h_deconv_3')
-        h_deconv_2 = self.hyper_conv_with_bn(deconv_5_3, [3,3,C,4*C], 
-                                             self.is_trainable, 'h_deconv_2')
-        h_deconv_1 = self.hyper_conv_with_bn(deconv_5_2, [3, 3, 512, 512], 
-                                             self.is_trainable, 'h_deconv_1')
+        h_deconv_2 = self.hyper_conv_with_bn(unpool_1, [3,3,2*C,2*C], 'h_deconv_2')
+        h_deconv_1 = self.hyper_conv_with_bn(h_deconv_2, [3,3,2*C,C], 'h_deconv_1')
 
         return h_deconv_1
 
@@ -324,7 +325,7 @@ class Scylla:
 
             pool_5 = self.dynamic_filtering(pool_5)
 
-            # Dynamic Filtering when on non-street view
+            # Hyper Encoder when on non-street view
             y = lambda x: x
             pool_5 = tf.cond(self.is_trainable, 
                              lambda: y(pool_5), 
