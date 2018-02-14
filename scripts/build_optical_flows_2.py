@@ -31,8 +31,8 @@ class FlowComputer:
 
     def compute_flow(self, image_1_path, image_2_path, 
                      ground_truth_1_path, output_image_path, output_ground_truth_path):
-        frame1 = cv2.imread(image_1_path)
-        frame2 = cv2.imread(image_2_path)
+        frame2 = cv2.imread(image_1_path)
+        frame1 = cv2.imread(image_2_path)
         old_gt = cv2.imread(ground_truth_1_path)
         old_gt = cv2.cvtColor(old_gt,cv2.COLOR_BGR2GRAY)
         previous_frame = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
@@ -59,10 +59,10 @@ class FlowComputer:
 
         new_gt = cv2.remap(old_gt, pixel_map_x_32, pixel_map_y_32, cv2.INTER_NEAREST)
         cv2.imwrite(output_ground_truth_path, new_gt)
-        cv2.imwrite(output_image_path, frame2)
+        cv2.imwrite(output_image_path, frame1)
    
 
-for k in range(5,18):
+for k in range(0,1):
     # PARAMETER: Change the two view folder locations
     view0_path = './datasets/Unreal-20View-11class/view' + str(k) + '/'
     view1_path = './datasets/Unreal-20View-11class/view' + str(k+1) + '/'
