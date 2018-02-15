@@ -231,11 +231,7 @@ class Scylla:
                                    name=name)
         bias = tf.get_variable(name="%s_b"%name,initializer=init_b,
                                shape=[filter_shape[-1]],dtype=tf.float32)
-
-        convolved_output = tf.nn.bias_add(conv, bias)
-        batch_norm = tf.contrib.layers.batch_norm(convolved_output, 
-                                                  is_training=True)
-        return tf.nn.relu(batch_norm)
+        return tf.nn.bias_add(conv, bias)
 
     def hyper_conv_with_bn(self, x, W_shape, name, padding='SAME'):
         b_shape = W_shape[3]
