@@ -463,3 +463,25 @@ class UnfixedMultiSegNet:
 
             dp = DataPostprocessor()
             dp.write_out(i, image, segmentation, ground_truth, current_step)
+
+    def multi_test(self, dataset_directory):
+
+        current_step = self.restore_session()
+
+        for j in range(1,20):
+
+          dr = DatasetReader(480, 320, dataset_directory + 'view' + str(j) + '/')
+
+          for i in range(min(dr.test_data_size, 10)):
+              image, ground_truth = dr.next_test_pair()
+
+              feed_dict = {self.x: [image], self.y: [ground_truth], 
+                           self.is_trainable: False, 
+                           self.theta: j, self.rate: 1e-2}
+              segmentation = np.squeeze(self.session.run(self.prediction, 
+                                                         feed_dict=feed_dict))
+
+              dp = DataPostprocessor()
+              dp.write_out(i+((j-1) * min(dr.test_data_size, 10)), image, segmentation, ground_truth, current_step)
+
+
