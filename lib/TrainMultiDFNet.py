@@ -435,10 +435,6 @@ class TrainMultiDFNet:
                                 self.checkpoint_directory + 'DFSegNet', 
                                 global_step = i)
 
-            # Print outputs every 10000 iterations
-            if i % 10000 == 0:
-                self.test(theta, is_trainable, dataset_directory, 1e-2)
-                self.logger.graph_training_stats()
 
     def test(self, theta, is_trainable, dataset_directory, learning_rate):
 
