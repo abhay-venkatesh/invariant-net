@@ -21,18 +21,12 @@ class MultiBatchDatasetReader:
         self.base_directory = directory
         self.WIDTH = WIDTH
         self.HEIGHT = HEIGHT
-        self.num_train = 0
-        self.num_val = 0
-        self.num_test = 0
 
         # Prepare record files for each view
         for i in range(1,20):
             curr_directory = self.base_directory + 'view' + str(i) + '/'
             rfg = RecordFileGenerator(curr_directory)
-            curr_num_train, curr_num_val, curr_num_test = rfg.create_files()
-            self.num_train += curr_num_train
-            self.num_val += curr_num_val
-            self.num_test += curr_num_test
+            self.num_train, self.num_val, self.num_test = rfg.create_files()
 
         # Say we have 100 training images
         # Say we are at training step 10
