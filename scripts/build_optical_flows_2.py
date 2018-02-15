@@ -62,7 +62,7 @@ class FlowComputer:
         cv2.imwrite(output_image_path, frame1)
    
 
-for k in range(0,1):
+for k in range(1,19):
     # PARAMETER: Change the two view folder locations
     view0_path = './datasets/Unreal-20View-11class/view' + str(k) + '/'
     view1_path = './datasets/Unreal-20View-11class/view' + str(k+1) + '/'
