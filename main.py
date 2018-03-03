@@ -1,4 +1,4 @@
-from lib.UnfixedMultiSegNet import UnfixedMultiSegNet 
+from lib.SegNetLogger import SegNetLogger 
 
 def main():
     dataset_directory = './datasets/UnrealFlows/'
