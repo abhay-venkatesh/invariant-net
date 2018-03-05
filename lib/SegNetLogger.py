@@ -4,11 +4,8 @@ import scipy.io
 from math import ceil
 import cv2
 from utils.BatchDatasetReader import BatchDatasetReader
-from utils.DatasetReader import DatasetReader
-from utils.DataPreprocessor import DataPreprocessor
+from utils.ValDatasetReader import ValDatasetReader
 from utils.DataPostprocessor import DataPostprocessor
-from utils.OutsideDataFeeder import OutsideDataFeeder
-from utils.CustomTestDataFeeder import CustomTestDataFeeder
 from utils.Logger import Logger
 from PIL import Image
 import datetime
@@ -16,8 +13,8 @@ import os
 import math
 
 # Only use a single GPU when not testing
-# if os.name != 'nt': 
-#    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+if os.name != 'nt': 
+   os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 
 class SegNetLogger:
@@ -40,8 +37,7 @@ class SegNetLogger:
                         'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
                         'relu5_3', 'conv5_4', 'relu5_4')
 
-    def __init__(self, dataset_directory, num_classes=11):
-        self.dataset_directory = dataset_directory
+    def __init__(self, num_classes=11):
         self.num_classes = num_classes
         self.load_vgg_weights()
         self.build()
@@ -72,7 +68,8 @@ class SegNetLogger:
             Initializes weights and biases to the pre-trained VGG model.
             
             Args:
-                name: name of the layer for which you want to initialize weights
+                name: name of the layer for which you want to initialize 
+                      weights
                 W_shape: shape of weights tensor exkpected
                 b_shape: shape of bias tensor expected
             returns:
@@ -141,7 +138,8 @@ class SegNetLogger:
             ret = tf.reshape(ret, tf.stack(output_shape))
             return ret
 
-    def conv_layer_with_bn(self, x, W_shape, train_phase, name, padding='SAME'):
+    def conv_layer_with_bn(self, x, W_shape, train_phase, name, 
+                           padding='SAME'):
         b_shape = W_shape[3]
         W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
         convolved_output = tf.nn.conv2d(x, W, strides=[1,1,1,1], 
@@ -287,11 +285,12 @@ class SegNetLogger:
         return global_step
 
 
-    def train(self, num_iterations=10000, learning_rate=0.1, batch_size=5):
+    def train(self, dataset_directory, num_iterations=10000, learning_rate=0.1, 
+              batch_size=5):
         current_step = self.restore_session()
 
-        bdr = BatchDatasetReader(self.dataset_directory, 480, 320, current_step, 
-                                 batch_size)
+        bdr = BatchDatasetReader(dataset_directory, 480, 320, current_step, 
+                                 batch_size, trainval_only=True)
 
         # Begin Training
         for i in range(current_step, num_iterations):
@@ -353,46 +352,59 @@ class SegNetLogger:
 
             # Print outputs every 1000 iterations
             if i % 1000 == 0:
-                self.test(learning_rate, self.dataset_directory)
                 self.logger.graph_training_stats()
 
 
-    def build_contextual_feedback_log(self, dataset_directory, learning_rate=0.1):
+    def build_contextual_feedback_log(self, dataset_directory, 
+                                      learning_rate=0.1):
 
         # Get trained weights and biases
         current_step = self.restore_session()
 
-        DESIRED_LOG_SIZE = 100
+        DESIRED_LOG_SIZE = 1
 
         output_dir = "./logged_bandit_feedback/"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir) 
 
+        images = []
+        losses = []
+        propensities = []
         for j in range(DESIRED_LOG_SIZE):
-            dr = DatasetReader(480, 320, dataset_directory)
-            for i in range(min(dr.test_data_size, 10)):
+            dr = ValDatasetReader(480, 320, dataset_directory)
+            dp = DataPostprocessor()
+            for i in range(dr.val_data_size):
 
-                i = (min(dr.test_data_size, 10) * j) + i
+                i = (dr.val_data_size * j) + i
 
-                image, ground_truth = dr.next_test_pair()
+                image, ground_truth, image_file = dr.next_val_pair()
 
                 feed_dict = {self.x: [image], self.y: [ground_truth], 
                              self.train_phase: 1, self.rate: learning_rate}
 
-                segmentation = np.squeeze(self.session.run(self.prediction, 
-                                                           feed_dict=feed_dict))
+                prediction = self.session.run(self.prediction, 
+                                              feed_dict=feed_dict)
+                segmentation = np.squeeze(prediction)
 
                 loss = self.session.run(self.loss, feed_dict=feed_dict)
                 propensity = self.session.run(self.propensity, 
                                               feed_dict=feed_dict)
-        
-                scipy.io.savemat(output_dir + 'x-' + str(i) + '.mat', image)
-                scipy.io.savemat(output_dir + 'y-' + str(i) + '.mat', 
-                                 segmentation)
-                scipy.io.savemat(output_dir + 'd-' + str(i) + '.mat', loss)
-                scipy.io.savemat(output_dir + 'd-' + str(i) + '.mat', loss)
+
+                images.append((i, image_file))
+                dp.write_out(i, segmentation)
+                losses.append(loss)
+                propensities.append(propensities)
+
+                if(i % 100 == 0):
+                    np.array(images).dump(open(output_dir + 'x-' + str(i), 'wb'))
+                    np.array(losses).dump(open(output_dir + 'd-' + str(i), 'wb'))
+                    np.array(propensities).dump(open(output_dir + 'p-' + str(i), 'wb'))
+                    images = []
+                    losses = []
+                    propensities = []
 
 
+# myArray = np.load(open('array.npy', 'rb'))
 
 
 

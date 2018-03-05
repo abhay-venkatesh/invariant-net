@@ -13,7 +13,7 @@ class BatchDatasetReader:
     """
 
     def __init__(self, directory, WIDTH, HEIGHT, current_step, batch_size,
-                 resize=False):
+                 trainval_only=False, resize=False):
 
         # Save variables
         self.batch_size = batch_size
@@ -24,7 +24,10 @@ class BatchDatasetReader:
 
         # Prepare dataset record files
         rfg = RecordFileGenerator(directory)
-        self.num_train, self.num_val, self.num_test = rfg.create_files()
+        if trainval_only:
+            self.num_train, self.num_val = rfg.create_trainval_only()
+        else:
+            self.num_train, self.num_val, self.num_test = rfg.create_files()
 
         # Say we have 100 training images
         # Say we are at training step 10
@@ -51,7 +54,8 @@ class BatchDatasetReader:
         # Read dataset items
         self.training_data = open(directory + 'train.txt').readlines()
         self.validation_data = open(directory + 'val.txt').readlines()
-        self.test_data = open(directory + 'test.txt').readlines()
+        if not trainval_only:
+            self.test_data = open(directory + 'test.txt').readlines()
 
     def shuffle_training_data(self):
         lines = open(self.directory + 'train.txt').readlines()

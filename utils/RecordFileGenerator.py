@@ -43,6 +43,11 @@ class RecordFileGenerator:
 	def create_trainval_only(self):
 		''' Create train.txt and val.txt'''
 
+		try:
+			os.remove(self.directory + 'test.txt')
+		except OSError:
+			pass
+
 		# Open files
 		train_path = self.directory + 'train.txt'
 		val_path = self.directory + 'val.txt'
@@ -50,7 +55,7 @@ class RecordFileGenerator:
 			with open(val_path, 'w') as valfile:
 				# Get image counts
 				numTrainingImages = math.floor(self.dataset_size * 0.7)
-				numValidationImages = math.floor(self.dataset_size * 0.30)
+				numValidationImages = math.floor(self.dataset_size * 0.3)
 
 				# Write the image records
 				for i in range(numTrainingImages):
