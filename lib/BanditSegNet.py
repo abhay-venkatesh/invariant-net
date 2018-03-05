@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io
 from math import ceil
 import cv2
-from utils.BatchDatasetReader import BatchDatasetReader
+from utils.BanditFeedbackReader import BanditFeedbackReader
 from utils.DatasetReader import DatasetReader
 from utils.DataPreprocessor import DataPreprocessor
 from utils.DataPostprocessor import DataPostprocessor
@@ -59,13 +59,6 @@ class BatchSegNet:
 
         self.logger = Logger()
         # Add summary logging capability
-        """
-        self.train_writer = tf.summary.FileWriter('./summaries' + '/train', 
-                                                  self.session.graph)
-        self.val_writer = tf.summary.FileWriter('./summaries' + '/val', 
-                                                 self.session.graph)
-        """
-
 
     def vgg_weight_and_bias(self, name, W_shape, b_shape):
         """ 
@@ -267,15 +260,7 @@ class BatchSegNet:
                                                     self.y,
                                                     self.num_classes, 
                                                     name='mean_IoU')
-
-        # Prepare for summaries
-        """
-        tf.summary.scalar('loss', self.loss)
-        tf.summary.scalar('accuracy', self.accuracy)
-        self.merged = tf.summary.merge_all()
-        """
-
-
+        
     def restore_session(self):
         global_step = 0
 
@@ -313,12 +298,6 @@ class BatchSegNet:
                 train_loss = self.session.run(self.loss, feed_dict=feed_dict)
                 print("Step: %d, Train_loss:%g" % (i, train_loss))
 
-                """
-                summary, _ = self.session.run([self.merged, self.train_step], 
-                                              feed_dict=feed_dict)
-                self.train_writer.add_summary(summary, i)
-                """
-
             # Run against validation dataset for 100 iterations
             if i % 100 == 0:
                 images, ground_truths = bdr.next_val_batch()
@@ -334,11 +313,6 @@ class BatchSegNet:
                 print("%s ---> Validation_accuracy: %g" % 
                       (datetime.datetime.now(), val_accuracy))
 
-                """
-                summary, _ = self.session.run([self.merged, self.accuracy], 
-                                              feed_dict=feed_dict)
-                self.val_writer.add_summary(summary, i)
-                """
                 self.logger.log("%s ---> Number of epochs: %g\n" % 
                                 (datetime.datetime.now(), 
                                  math.floor((i * batch_size)/bdr.num_train)))

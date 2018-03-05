@@ -370,9 +370,10 @@ class SegNetLogger:
         images = []
         losses = []
         propensities = []
+        dr = ValDatasetReader(480, 320, dataset_directory)
+        dp = DataPostprocessor()
         for j in range(DESIRED_LOG_SIZE):
-            dr = ValDatasetReader(480, 320, dataset_directory)
-            dp = DataPostprocessor()
+
             for i in range(dr.val_data_size):
 
                 i = (dr.val_data_size * j) + i
@@ -395,6 +396,7 @@ class SegNetLogger:
                 losses.append(loss)
                 propensities.append(propensities)
 
+                '''
                 if(i % 100 == 0):
                     np.array(images).dump(open(output_dir + 'x-' + str(i), 'wb'))
                     np.array(losses).dump(open(output_dir + 'd-' + str(i), 'wb'))
@@ -402,6 +404,11 @@ class SegNetLogger:
                     images = []
                     losses = []
                     propensities = []
+                '''
+
+        with open(output_dir + 'meta', 'a') as metafile:
+            metafile.write("size, " + str(dr.val_data_size * DESIRED_LOG_SIZE))
+
 
 
 # myArray = np.load(open('array.npy', 'rb'))
