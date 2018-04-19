@@ -17,10 +17,10 @@ import math
 
 # Only use a single GPU when not testing
 if os.name != 'nt': 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 
-class ReduceMeanDFNet:
+class InvariantNet:
     def __init__(self, dataset_directory, num_classes=11):
 
         self.num_classes = num_classes
@@ -57,7 +57,7 @@ class ReduceMeanDFNet:
                         'relu5_3', 'conv5_4', 'relu5_4')
 
 
-    def vgg_weight_and_bias(self, name, W_shape, b_shape, is_trainable):
+    def vgg_weight_and_bias(self, name, W_shape, b_shape):
         """ 
             Initializes weights and biases to the pre-trained VGG model.
             
@@ -65,39 +65,30 @@ class ReduceMeanDFNet:
                 name: name of the layer for which you want to initialize weights
                 W_shape: shape of weights tensor exkpected
                 b_shape: shape of bias tensor expected
-                is_trainable: 1 if weights unfrozen, 0 if frozen
             returns:
                 w_var: Initialized weight variable
                 b_var: Initialized bias variable
         """
         if name not in self.layers:
-            return self.weight_variable(W_shape, is_trainable), \
-                   self.weight_variable(b_shape, is_trainable)
+            return self.weight_variable(W_shape), \
+                   self.weight_variable(b_shape)
         else:
             w, b = self.vgg_params[self.layers.index(name)][0][0][0][0]
             init_w = tf.constant(value=np.transpose(w, (1, 0, 2, 3)), 
                                  dtype=tf.float32, shape=W_shape)
             init_b = tf.constant(value=b.reshape(-1), dtype=tf.float32, 
                                  shape=b_shape)
-            w_var = tf.cond(self.is_trainable, 
-                             lambda: tf.Variable(init_w, trainable=True), 
-                             lambda: tf.Variable(init_w, trainable=False))
-            b_var = tf.cond(self.is_trainable, 
-                             lambda: tf.Variable(init_b, trainable=True), 
-                             lambda: tf.Variable(init_b, trainable=False))
+            w_var = tf.Variable(init_w)
+            b_var = tf.Variable(init_b)
             return w_var, b_var 
 
     def weight_variable(self, shape, is_trainable):
         initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.cond(self.is_trainable, 
-                             lambda: tf.Variable(initial, trainable=True), 
-                             lambda: tf.Variable(initial, trainable=False))
+        return tf.Variable(initial)
 
     def bias_variable(self, shape, is_trainable):
         initial = tf.constant(0.1, shape=shape)
-        return tf.cond(self.is_trainable, 
-                             lambda: tf.Variable(initial, trainable=True), 
-                             lambda: tf.Variable(initial, trainable=False))
+        return tf.Variable(initial, trainable=True)
 
 
     def pool_layer(self, x):
@@ -144,9 +135,9 @@ class ReduceMeanDFNet:
             ret = tf.reshape(ret, tf.stack(output_shape))
             return ret
 
-    def conv_layer_with_bn(self, x, W_shape, is_trainable, name, padding='SAME'):
+    def conv_layer_with_bn(self, x, W_shape, name, padding='SAME'):
         b_shape = W_shape[3]
-        W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape], is_trainable)
+        W, b = self.vgg_weight_and_bias(name, W_shape, [b_shape])
         convolved_output = tf.nn.conv2d(x, W, strides=[1,1,1,1], 
                                         padding=padding) + b
         batch_norm = tf.contrib.layers.batch_norm(convolved_output, 
@@ -185,7 +176,7 @@ class ReduceMeanDFNet:
 
         """
         Theta with Reduce Mean
-        """ 
+
         theta = theta/20
         theta = tf.expand_dims(theta, 0)
         theta = tf.expand_dims(theta, 1)
@@ -194,17 +185,17 @@ class ReduceMeanDFNet:
         theta = tf.tile(theta, tf.stack([tf.shape(features)[0], features.get_shape()[1], 1]))
         features = tf.concat([features, theta], 2)
         features = tf.reduce_mean(features, axis=2)
-
+        """ 
 
         """
         Theta with append
-        
+        """
         theta = theta/20
         theta = tf.expand_dims(theta, 0)
         theta = tf.expand_dims(theta, 1)
         theta = tf.tile(theta, tf.stack([tf.shape(features)[0], 1]))
         features = tf.concat([features, theta], 1)
-        """
+        # print(features.get_shape())
 
         fc1 = tf.contrib.layers.fully_connected(features, 64)
         fc2 = tf.contrib.layers.fully_connected(fc1, 128)
@@ -249,43 +240,43 @@ class ReduceMeanDFNet:
             # First encoder
             # conv_1_1 shape = BATCH_SIZE * HEIGHT * WIDTH * 64
             conv_1_1 = self.conv_layer_with_bn(self.x, [3, 3, 3, 64], 
-                                               self.is_trainable, 'conv1_1')
+                                               'conv1_1')
             conv_1_2 = self.conv_layer_with_bn(conv_1_1, [3, 3, 64, 64], 
-                                               self.is_trainable, 'conv1_2')
+                                               'conv1_2')
             pool_1, pool_1_argmax = self.pool_layer(conv_1_2)
 
             # Second encoder
             conv_2_1 = self.conv_layer_with_bn(pool_1, [3, 3, 64, 128], 
-                                               self.is_trainable, 'conv2_1')
+                                               'conv2_1')
             conv_2_2 = self.conv_layer_with_bn(conv_2_1, [3, 3, 128, 128], 
-                                               self.is_trainable, 'conv2_2')
+                                               'conv2_2')
             pool_2, pool_2_argmax = self.pool_layer(conv_2_2)
 
             # Third encoder
             conv_3_1 = self.conv_layer_with_bn(pool_2, [3, 3, 128, 256], 
-                                               self.is_trainable, 'conv3_1')
+                                               'conv3_1')
             conv_3_2 = self.conv_layer_with_bn(conv_3_1, [3, 3, 256, 256], 
-                                               self.is_trainable, 'conv3_2')
+                                               'conv3_2')
             conv_3_3 = self.conv_layer_with_bn(conv_3_2, [3, 3, 256, 256], 
-                                               self.is_trainable, 'conv3_3')
+                                               'conv3_3')
             pool_3, pool_3_argmax = self.pool_layer(conv_3_3)
 
             # Fourth encoder
             conv_4_1 = self.conv_layer_with_bn(pool_3, [3, 3, 256, 512], 
-                                               self.is_trainable, 'conv4_1')
+                                               'conv4_1')
             conv_4_2 = self.conv_layer_with_bn(conv_4_1, [3, 3, 512, 512], 
-                                               self.is_trainable, 'conv4_2')
+                                               'conv4_2')
             conv_4_3 = self.conv_layer_with_bn(conv_4_2, [3, 3, 512, 512], 
-                                               self.is_trainable, 'conv4_3')
+                                               'conv4_3')
             pool_4, pool_4_argmax = self.pool_layer(conv_4_3)
 
             # Fifth encoder
             conv_5_1 = self.conv_layer_with_bn(pool_4, [3, 3, 512, 512], 
-                                               self.is_trainable, 'conv5_1')
+                                               'conv5_1')
             conv_5_2 = self.conv_layer_with_bn(conv_5_1, [3, 3, 512, 512], 
-                                               self.is_trainable, 'conv5_2')
+                                               'conv5_2')
             conv_5_3 = self.conv_layer_with_bn(conv_5_2, [3, 3, 512, 512], 
-                                               self.is_trainable, 'conv5_3')
+                                               'conv5_3')
             # pool_5 shape = BATCH_SIZE * HEIGHT * WIDTH * 512
             pool_5, pool_5_argmax = self.pool_layer(conv_5_3)
 
@@ -298,49 +289,49 @@ class ReduceMeanDFNet:
             # First decoder
             unpool_5 = self.unpool(pool_5, pool_5_argmax)
             deconv_5_3 = self.conv_layer_with_bn(unpool_5, [3, 3, 512, 512], 
-                                                 self.is_trainable, 'deconv5_3')
+                                                 'deconv5_3')
             deconv_5_2 = self.conv_layer_with_bn(deconv_5_3, [3, 3, 512, 512], 
-                                                 self.is_trainable, 'deconv5_2')
+                                                 'deconv5_2')
             deconv_5_1 = self.conv_layer_with_bn(deconv_5_2, [3, 3, 512, 512], 
-                                                 self.is_trainable, 'deconv5_1')
+                                                 'deconv5_1')
 
             # Second decoder
             unpool_4 = self.unpool(deconv_5_1, pool_4_argmax)
             deconv_4_3 = self.conv_layer_with_bn(unpool_4, [3, 3, 512, 512], 
-                                                 self.is_trainable, 'deconv4_3')
+                                                 'deconv4_3')
             deconv_4_2 = self.conv_layer_with_bn(deconv_4_3, [3, 3, 512, 512], 
-                                                 self.is_trainable, 'deconv4_2')
+                                                 'deconv4_2')
             deconv_4_1 = self.conv_layer_with_bn(deconv_4_2, [3, 3, 512, 256], 
-                                                 self.is_trainable, 'deconv4_1')
+                                                 'deconv4_1')
 
             # Third decoder
             unpool_3 = self.unpool(deconv_4_1, pool_3_argmax)
             deconv_3_3 = self.conv_layer_with_bn(unpool_3, [3, 3, 256, 256], 
-                                                 self.is_trainable, 'deconv3_3')
+                                                 'deconv3_3')
             deconv_3_2 = self.conv_layer_with_bn(deconv_3_3, [3, 3, 256, 256], 
-                                                 self.is_trainable, 'deconv3_2')
+                                                 'deconv3_2')
             deconv_3_1 = self.conv_layer_with_bn(deconv_3_2, [3, 3, 256, 128], 
-                                                 self.is_trainable, 'deconv3_1')
+                                                 'deconv3_1')
 
             # Fourth decoder
             unpool_2 = self.unpool(deconv_3_1, pool_2_argmax)
             deconv_2_2 = self.conv_layer_with_bn(unpool_2, [3, 3, 128, 128], 
-                                                 self.is_trainable, 'deconv2_2')
+                                                 'deconv2_2')
             deconv_2_1 = self.conv_layer_with_bn(deconv_2_2, [3, 3, 128, 64], 
-                                                 self.is_trainable, 'deconv2_1')
+                                                 'deconv2_1')
 
             # Fifth decoder
             unpool_1 = self.unpool(deconv_2_1, pool_1_argmax)
             deconv_1_2 = self.conv_layer_with_bn(unpool_1, [3, 3, 64, 64], 
-                                                 self.is_trainable, 'deconv1_2')
+                                                 'deconv1_2')
             deconv_1_1 = self.conv_layer_with_bn(deconv_1_2, [3, 3, 64, 32], 
-                                                 self.is_trainable, 'deconv1_1')
+                                                 'deconv1_1')
 
             # Produce class scores
             # score_1 dimensions: BATCH_SIZE * HEIGHT * WIDTH * NUM_CLASSES
             score_1 = self.conv_layer_with_bn(deconv_1_1, 
                                               [1, 1, 32, self.num_classes], 
-                                              self.is_trainable, 'score_1')
+                                              'score_1')
             logits = tf.reshape(score_1, (-1, self.num_classes))
 
             # Prepare network outputs
